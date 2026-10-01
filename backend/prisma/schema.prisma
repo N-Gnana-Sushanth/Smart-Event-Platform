@@ -1,0 +1,234 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String    @id @default(uuid())
+  name             String
+  email            String    @unique
+  passwordHash     String
+  role             String    @default("ADMIN") // ADMIN, PARTICIPANT
+  organization     String?
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  events           Event[]
+  emailConfig      OrganizerEmailConfig?
+  emailLogs        EmailLog[]
+}
+
+model Event {
+  id                       String                     @id @default(uuid())
+  slug                     String                     @unique
+  title                    String
+  description              String
+  category                 String                     @default("Technology")
+  type                     String                     @default("HYBRID") // PHYSICAL, ONLINE, HYBRID
+  status                   String                     @default("REGISTRATION_OPEN") // DRAFT, REGISTRATION_OPEN, REGISTRATION_CLOSED, EVENT_LIVE, COMPLETED, ARCHIVED
+  eventDate                DateTime
+  startTime                String
+  endTime                  String
+  durationHours            Float?
+  timezone                 String                     @default("UTC")
+  locationOrLink           String
+  organizationName         String
+  logoUrl                  String?
+  bannerUrl                String?
+  contactName              String
+  contactEmail             String
+  contactPhone             String?
+  websiteUrl               String?
+  socialLinksJson          String?                    // { twitter, linkedin, github, discord }
+  
+  // Registration rules
+  regOpenDate              DateTime?
+  regCloseDate             DateTime?
+  maxRegistrations         Int?
+  isTeamEvent              Boolean                    @default(false)
+  maxTeamMembers           Int                        @default(4)
+  requireCaptain           Boolean                    @default(true)
+  allowEditAfterSubmission Boolean                    @default(false)
+  
+  // Security
+  volunteerPasswordHash    String?
+  
+  // Branding
+  primaryColor             String                     @default("#2563eb")
+  secondaryColor           String                     @default("#0f172a")
+  signatureNamesJson       String?                    // ["Dr. Alex Chen, Director", "Prof. Maya Lin, Dean"]
+  signatureImagesJson      String?
+  
+  // Automated reminders
+  enableReminder           Boolean                    @default(true)
+  reminderSent             Boolean                    @default(false)
+  passesCleanedAt          DateTime?
+
+  // Relations
+  organizerId              String
+  organizer                User                       @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  registrations            Registration[]
+  teams                    Team[]
+  volunteers               Volunteer[]
+  volunteerRequests        VolunteerRequest[]
+  customFields             CustomRegistrationField[]
+  certificates             Certificate[]
+  emailLogs                EmailLog[]
+  templates                CertificateTemplate[]
+
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+}
+
+model CustomRegistrationField {
+  id          String   @id @default(uuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  fieldName   String   // e.g. github_url
+  label       String   // e.g. GitHub Profile URL
+  fieldType   String   // TEXT, NUMBER, EMAIL, DROPDOWN, RADIO, CHECKBOX, FILE
+  optionsJson String?  // JSON array for options
+  isRequired  Boolean  @default(false)
+  orderIndex  Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model Registration {
+  id                    String             @id @default(uuid())
+  registrationCode      String             @unique // REG-2026-A8F42K
+  eventId               String
+  event                 Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  teamId                String?
+  team                  Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  fullName              String
+  participantIdCode     String             // Student ID, Employee ID, etc.
+  email                 String
+  organization          String
+  phone                 String?
+  passStatus            String             @default("ACTIVE") // ACTIVE, REVOKED, CANCELLED, EXPIRED
+  qrToken               String?            @unique // Cryptographically secure unpredictable token (cleared after pass cleanup)
+  isCaptain             Boolean            @default(false)
+  volunteerOptIn        Boolean            @default(false)
+  eligibilityStatus     String             @default("APPROVED") // APPROVED, PENDING, REJECTED
+  customFieldValuesJson String?            // JSON dict of responses
+  
+  certificates          Certificate[]
+  volunteerRequests     VolunteerRequest[]
+  emailLogs             EmailLog[]
+
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+}
+
+model Team {
+  id                    String         @id @default(uuid())
+  teamCode              String         @unique // TEAM-2026-X9Y1
+  eventId               String
+  event                 Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  teamName              String
+  captainRegistrationId String?
+  status                String         @default("ACTIVE") // ACTIVE, DISQUALIFIED
+  awardPosition         Int?           // 1, 2, 3 or null
+  registrations         Registration[]
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+}
+
+model Volunteer {
+  id              String   @id @default(uuid())
+  eventId         String
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name            String
+  volunteerIdCode String
+  email           String
+  createdAt       DateTime @default(now())
+}
+
+model VolunteerRequest {
+  id                String       @id @default(uuid())
+  eventId           String
+  event             Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registrationId    String
+  registration      Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  name              String
+  participantIdCode String
+  email             String
+  status            String       @default("PENDING") // PENDING, CONTACTED, ACCEPTED, REJECTED
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model CertificateTemplate {
+  id                 String        @id @default(uuid())
+  eventId            String
+  event              Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name               String
+  designType         String        @default("AI_GENERATED") // AI_GENERATED, CUSTOM_UPLOAD
+  templateConfigJson String        // Layout, colors, font settings, border type, theme name
+  backgroundAssetUrl String?
+  isApproved         Boolean       @default(false)
+  certificates       Certificate[]
+  createdAt          DateTime      @default(now())
+}
+
+model Certificate {
+  id              String               @id @default(uuid())
+  certificateCode String               @unique // CERT-2026-000123
+  eventId         String
+  event           Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registrationId  String
+  registration    Registration         @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  recipientName   String
+  organization    String
+  certificateType String               @default("PARTICIPANT") // PARTICIPANT, WINNER
+  awardPosition   String?              // "1st Place", "2nd Place", "3rd Place"
+  issueDate       DateTime             @default(now())
+  templateId      String?
+  template        CertificateTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  pdfPath         String?
+  qrCodeDataUrl   String?
+  emailStatus     String               @default("PENDING") // PENDING, SENT, FAILED
+  emailSentAt     DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+}
+
+model EmailLog {
+  id             String        @id @default(uuid())
+  organizerId    String?
+  organizer      User?         @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  senderEmail    String?
+  eventId        String?
+  event          Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registrationId String?
+  registration   Registration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  recipientEmail String
+  subject        String
+  emailType      String        // WELCOME, REMINDER, CERTIFICATE, VOLUNTEER, PASSWORD_RESET, TEST
+  status         String        @default("SENT") // SENT, PENDING, FAILED, MOCK
+  errorMessage   String?
+  retryCount     Int           @default(0)
+  sentAt         DateTime      @default(now())
+}
+
+model OrganizerEmailConfig {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  senderEmail       String
+  senderDisplayName String?
+  smtpHost          String
+  smtpPort          Int      @default(587)
+  smtpUser          String
+  smtpPassword      String   // Encrypted server-side with EMAIL_CREDENTIAL_ENCRYPTION_KEY
+  secure            Boolean  @default(false)
+  isVerified        Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+

@@ -1,0 +1,26 @@
+# Dependency directories
+node_modules/
+*/node_modules/
+
+# Environment variable files (NEVER COMMIT)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+!.env.example
+
+# SQLite Database journals
+*.db-journal
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Temp uploads & cache
+backend/uploads/temp/*
+!backend/uploads/temp/.gitkeep
+.DS_Store
+Thumbs.db
