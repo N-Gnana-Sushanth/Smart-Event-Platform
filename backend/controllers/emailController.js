@@ -271,7 +271,7 @@ export async function retryEmail(req, res) {
 
     // Strict multi-tenant check
     const isOwner = log.organizerId === req.user.id || log.event?.organizerId === req.user.id;
-    if (!isOwner && log.eventId !== 'SYSTEM') {
+    if (!isOwner && log.eventId) {
       return res.status(403).json({ error: 'Unauthorized to retry this email log' });
     }
 
