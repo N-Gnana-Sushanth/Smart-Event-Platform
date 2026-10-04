@@ -24,11 +24,3 @@ backend/uploads/temp/*
 !backend/uploads/temp/.gitkeep
 .DS_Store
 Thumbs.db
-node_modules/
-.env
-*.env
-dist/
-
-backend/prisma/*.db
-backend/uploads/
-backend/backend/uploads/

@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
-import { PORT } from './config/env.js';
+import { PORT, CLIENT_URL } from './config/env.js';
 import authRoutes from './routes/authRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import registrationRoutes from './routes/registrationRoutes.js';
@@ -15,9 +15,29 @@ import { startReminderScheduler } from './services/reminderScheduler.js';
 
 const app = express();
 
-// Middlewares
+// CORS configuration supporting CLIENT_URL and local dev
+const allowedOrigins = [
+  CLIENT_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+].filter(Boolean);
+
 app.use(cors({
-  origin: '*',
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (
+      allowedOrigins.includes(origin) ||
+      allowedOrigins.includes('*') ||
+      origin.endsWith('.netlify.app') ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1')
+    ) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));

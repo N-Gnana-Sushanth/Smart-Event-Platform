@@ -5,14 +5,10 @@ import { encryptCredential } from '../utils/crypto.js';
 
 const prisma = new PrismaClient();
 
-function secureToken() {
-  return crypto.randomBytes(24).toString('hex');
-}
-
 async function main() {
-  console.log('Seeding Smart Event Management database...');
+  console.log('=== SEEDING SINGLE REALISTIC DEMONSTRATION TEST CASE ===');
 
-  // 1. Clean existing records
+  // 1. Clean existing records to keep strictly ONE demonstration record
   await prisma.organizerEmailConfig.deleteMany({});
   await prisma.emailLog.deleteMany({});
   await prisma.certificate.deleteMany({});
@@ -25,343 +21,184 @@ async function main() {
   await prisma.event.deleteMany({});
   await prisma.user.deleteMany({});
 
-  // 2. Create Admin Organizers (Organizer A & Organizer B for Multi-tenant isolation testing)
+  // 2. Create Event Administrator / Faculty Coordinator Account
   const passwordHash = await bcrypt.hash('AdminPass123!', 10);
-  const adminA = await prisma.user.create({
+  const organizer = await prisma.user.create({
     data: {
-      name: 'Dr. Evelyn Reed',
+      name: 'Dr. K. Srinivas',
       email: 'admin@smartevent.com',
       passwordHash,
       role: 'ADMIN',
-      organization: 'Global Technology Council',
+      organization: 'G. Pulla Reddy Engineering College (Autonomous)',
     },
   });
 
-  // Seed Email Config for Admin A
+  // 3. Organizer Email Sending Configuration
   await prisma.organizerEmailConfig.create({
     data: {
-      userId: adminA.id,
-      senderEmail: 'evelyn.reed@gtcouncil.org',
-      senderDisplayName: 'Global Technology Council Events',
+      userId: organizer.id,
+      senderEmail: 'events@gprec.ac.in',
+      senderDisplayName: 'GPREC Event Directorate',
       smtpHost: 'smtp.mailtrap.io',
-      smtpPort: 2525,
-      smtpUser: 'gtc_mailer_user',
-      smtpPassword: encryptCredential('gtc_app_secret_pass_2026'),
-      secure: false,
-      isVerified: true,
-    },
-  });
-
-  const adminB = await prisma.user.create({
-    data: {
-      name: 'Prof. Marcus Thorne',
-      email: 'organizer.b@university.edu',
-      passwordHash,
-      role: 'ADMIN',
-      organization: 'Apex Science Institute',
-    },
-  });
-
-  // Seed Email Config for Admin B (Distinct sender identity)
-  await prisma.organizerEmailConfig.create({
-    data: {
-      userId: adminB.id,
-      senderEmail: 'events@apexscience.edu',
-      senderDisplayName: 'Apex Science Institute Outbox',
-      smtpHost: 'smtp.university.edu',
       smtpPort: 587,
-      smtpUser: 'apex_smtp_account',
-      smtpPassword: encryptCredential('apex_app_secret_pass_2026'),
+      smtpUser: 'gprec_mailer',
+      smtpPassword: encryptCredential('gprec_secret_smtp_pass_2026'),
       secure: false,
       isVerified: true,
     },
   });
 
-  // Participant User
-  const studentUser = await prisma.user.create({
+  // 4. Create Exactly ONE Realistic Event: National Collegiate AI & Cloud Hackathon 2026
+  const futureEventDate = new Date();
+  futureEventDate.setDate(futureEventDate.getDate() + 14); // 2 weeks in future
+  futureEventDate.setHours(9, 0, 0, 0);
+
+  const volunteerPasswordHash = await bcrypt.hash('volunteer2026', 10);
+
+  const event = await prisma.event.create({
     data: {
-      name: 'Alex Rivera',
-      email: 'alex.rivera@example.com',
-      passwordHash,
-      role: 'PARTICIPANT',
-      organization: 'MIT Autonomous Lab',
-    },
-  });
-
-  // Volunteer passwords
-  const hackathonVolPass = await bcrypt.hash('volunteer2026', 10);
-  const summitVolPass = await bcrypt.hash('summit2026', 10);
-  const quantumVolPass = await bcrypt.hash('quantum2026', 10);
-
-  // 3. Event 1 (Owned by Admin A): Global AI & Cloud Hackathon 2026 (Upcoming, Team event)
-  const futureDate1 = new Date();
-  futureDate1.setDate(futureDate1.getDate() + 14); // 2 weeks in future
-
-  const event1 = await prisma.event.create({
-    data: {
-      slug: 'global-ai-cloud-hackathon-2026',
-      title: 'Global AI & Cloud Hackathon 2026',
-      description: 'An international 48-hour competitive hackathon bringing together software engineers, AI researchers, and designers to build next-generation autonomous systems and resilient cloud architectures.',
+      slug: 'national-collegiate-ai-hackathon-2026',
+      title: 'National Collegiate AI & Cloud Hackathon 2026',
+      description: 'A flagship 36-hour inter-collegiate hackathon and innovation sprint hosted by the Department of Computer Science & Engineering in collaboration with the Innovation & Entrepreneurship Cell. University teams will collaborate to architect and deploy production-ready AI agents, edge IoT solutions, and resilient cloud architectures.',
       category: 'Hackathons',
       type: 'HYBRID',
       status: 'REGISTRATION_OPEN',
-      eventDate: futureDate1,
+      eventDate: futureEventDate,
       startTime: '09:00 AM',
-      endTime: '09:00 PM',
-      durationHours: 48,
-      timezone: 'America/New_York',
-      locationOrLink: 'Metropolitan Tech Center, Hall B & Virtual Discord',
-      organizationName: 'Global AI Foundation & Cloud Alliance',
+      endTime: '08:00 PM',
+      durationHours: 36,
+      timezone: 'Asia/Kolkata',
+      locationOrLink: 'Main Auditorium & Advanced Computing Labs, Tech Block-A',
+      organizationName: 'G. Pulla Reddy Engineering College (Autonomous)',
       logoUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200&auto=format&fit=crop&q=80',
       bannerUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=1200&auto=format&fit=crop&q=80',
-      contactName: 'Alex Mercer',
-      contactEmail: 'organizers@globalaihackathon.io',
-      contactPhone: '+1 (555) 234-8901',
-      websiteUrl: 'https://globalaihackathon.io',
+      contactName: 'Dr. K. Srinivas (Faculty Coordinator)',
+      contactEmail: 'events@gprec.ac.in',
+      contactPhone: '+91 98765 43210',
+      websiteUrl: 'https://hackathon.gprec.ac.in',
       socialLinksJson: JSON.stringify({
-        twitter: 'https://twitter.com/globalai',
-        github: 'https://github.com/globalai-hack',
-        discord: 'https://discord.gg/globalai',
+        twitter: 'https://twitter.com/gprec_hack',
+        github: 'https://github.com/gprec-innovation',
+        discord: 'https://discord.gg/gprec-ai',
       }),
       regOpenDate: new Date(),
-      regCloseDate: new Date(futureDate1.getTime() - 24 * 60 * 60 * 1000),
-      maxRegistrations: 250,
+      regCloseDate: new Date(futureEventDate.getTime() - 24 * 60 * 60 * 1000),
+      maxRegistrations: 200,
       isTeamEvent: true,
       maxTeamMembers: 4,
       requireCaptain: true,
       allowEditAfterSubmission: false,
-      volunteerPasswordHash: hackathonVolPass,
-      primaryColor: '#059669', // Emerald
-      secondaryColor: '#064e3b',
-      signatureNamesJson: JSON.stringify(['Dr. Evelyn Reed, Council Chair', 'Marcus Thorne, Chief Architect']),
-      organizerId: adminA.id,
+      volunteerPasswordHash,
+      primaryColor: '#2563eb', // Royal Blue
+      secondaryColor: '#0f172a',
+      signatureNamesJson: JSON.stringify(['Dr. K. Srinivas, Event Convener', 'Dr. B. Sreenivasa Reddy, Principal']),
+      organizerId: organizer.id,
     },
   });
 
-  // Custom Fields for Event 1 (T-Shirt Size removed)
+  // 5. Custom Registration Fields for College Students
   await prisma.customRegistrationField.createMany({
     data: [
       {
-        eventId: event1.id,
-        fieldName: 'github_profile',
-        label: 'GitHub Profile URL',
-        fieldType: 'TEXT',
+        eventId: event.id,
+        fieldName: 'department_year',
+        label: 'Department & Year of Study',
+        fieldType: 'DROPDOWN',
+        optionsJson: JSON.stringify(['CSE - 3rd Year', 'CSE - 4th Year', 'ECE - 3rd Year', 'ECE - 4th Year', 'IT - 3rd Year', 'Other Department']),
         isRequired: true,
         orderIndex: 0,
       },
       {
-        eventId: event1.id,
-        fieldName: 'dietary_restrictions',
-        label: 'Dietary Preferences',
-        fieldType: 'DROPDOWN',
-        optionsJson: JSON.stringify(['None', 'Vegetarian', 'Vegan', 'Halal', 'Kosher', 'Gluten-Free']),
-        isRequired: false,
+        eventId: event.id,
+        fieldName: 'github_profile',
+        label: 'GitHub / Project Portfolio URL',
+        fieldType: 'TEXT',
+        isRequired: true,
         orderIndex: 1,
+      },
+      {
+        eventId: event.id,
+        fieldName: 'dietary_preference',
+        label: 'Meal Preference',
+        fieldType: 'DROPDOWN',
+        optionsJson: JSON.stringify(['Standard Meals', 'Vegetarian', 'Vegan']),
+        isRequired: false,
+        orderIndex: 2,
       },
     ],
   });
 
-  // Team 1: Neural Knights
-  const team1 = await prisma.team.create({
+  // 6. Exactly ONE Sample Team & Registered Participant
+  const team = await prisma.team.create({
     data: {
-      teamCode: 'TEAM-2026-A101',
-      eventId: event1.id,
-      teamName: 'Neural Knights',
+      teamCode: 'TEAM-2026-AI01',
+      eventId: event.id,
+      teamName: 'Neural Innovations',
       status: 'ACTIVE',
+      awardPosition: 1,
     },
   });
 
-  const reg1 = await prisma.registration.create({
+  const registration = await prisma.registration.create({
     data: {
-      registrationCode: 'REG-2026-NK001',
-      eventId: event1.id,
-      teamId: team1.id,
-      fullName: 'Alex Rivera',
-      participantIdCode: 'PART-AI-011',
-      email: 'alex.rivera@example.com',
-      organization: 'MIT Autonomous Lab',
-      phone: '+1 555-0192',
+      registrationCode: 'REG-2026-AI0101',
+      eventId: event.id,
+      teamId: team.id,
+      fullName: 'Rahul Sharma',
+      participantIdCode: '229X1A0501',
+      email: 'rahul.sharma@student.gprec.ac.in',
+      organization: 'G. Pulla Reddy Engineering College - CSE',
+      phone: '+91 91234 56789',
       passStatus: 'ACTIVE',
-      qrToken: secureToken(),
+      qrToken: 'pass-token-rahul-ai2026-valid',
       isCaptain: true,
       volunteerOptIn: false,
-      customFieldValuesJson: JSON.stringify({ github_profile: 'https://github.com/arivera-ai' }),
+      eligibilityStatus: 'APPROVED',
+      customFieldValuesJson: JSON.stringify({
+        department_year: 'CSE - 3rd Year',
+        github_profile: 'https://github.com/rahul-sharma-dev',
+        dietary_preference: 'Vegetarian',
+      }),
     },
   });
 
-  const reg2 = await prisma.registration.create({
-    data: {
-      registrationCode: 'REG-2026-NK002',
-      eventId: event1.id,
-      teamId: team1.id,
-      fullName: 'Sarah Chen',
-      participantIdCode: 'PART-AI-012',
-      email: 'sarah.chen@example.com',
-      organization: 'MIT Autonomous Lab',
-      phone: '+1 555-0193',
-      passStatus: 'ACTIVE',
-      qrToken: secureToken(),
-      isCaptain: false,
-      volunteerOptIn: true,
-      customFieldValuesJson: JSON.stringify({ github_profile: 'https://github.com/schen-cloud' }),
-    },
-  });
-
+  // Link Team Captain
   await prisma.team.update({
-    where: { id: team1.id },
-    data: { captainRegistrationId: reg1.id },
+    where: { id: team.id },
+    data: { captainRegistrationId: registration.id },
   });
 
-  // Approved Volunteer for Event 1
+  // 7. Exactly ONE Volunteer Record & Request for Gate Pass Scanner
   await prisma.volunteer.create({
     data: {
-      eventId: event1.id,
-      name: 'Sarah Chen',
-      volunteerIdCode: 'VOL-2026-1042',
-      email: 'sarah.chen@example.com',
+      eventId: event.id,
+      name: 'Priya Patel',
+      volunteerIdCode: 'VOL-2026-101',
+      email: 'priya.patel@student.gprec.ac.in',
     },
   });
 
   await prisma.volunteerRequest.create({
     data: {
-      eventId: event1.id,
-      registrationId: reg2.id,
-      name: 'Sarah Chen',
-      participantIdCode: 'PART-AI-012',
-      email: 'sarah.chen@example.com',
+      eventId: event.id,
+      registrationId: registration.id,
+      name: 'Priya Patel',
+      participantIdCode: '229X1A0542',
+      email: 'priya.patel@student.gprec.ac.in',
       status: 'ACCEPTED',
     },
   });
 
-  // 4. Event 2 (Owned by Admin A): International Tech Leaders Summit 2026 (Upcoming, Solo event)
-  const futureDate2 = new Date();
-  futureDate2.setDate(futureDate2.getDate() + 30); // 1 month in future
-
-  const event2 = await prisma.event.create({
-    data: {
-      slug: 'international-tech-leaders-summit-2026',
-      title: 'International Tech Leaders Summit 2026',
-      description: 'The premier global summit for CTOs, Engineering VPs, and Technology Innovators exploring scalable enterprise computing, ethical AI governance, and digital transformation.',
-      category: 'Conferences',
-      type: 'PHYSICAL',
-      status: 'REGISTRATION_OPEN',
-      eventDate: futureDate2,
-      startTime: '08:30 AM',
-      endTime: '06:00 PM',
-      durationHours: 9.5,
-      timezone: 'Europe/London',
-      locationOrLink: 'ExCeL London International Convention Centre, Royal Victoria Dock',
-      organizationName: 'Global Leadership Institute',
-      logoUrl: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=200&auto=format&fit=crop&q=80',
-      bannerUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&auto=format&fit=crop&q=80',
-      contactName: 'Clara Oswald',
-      contactEmail: 'summit@techleaders.org',
-      contactPhone: '+44 20 7946 0912',
-      websiteUrl: 'https://techleaders.org',
-      regOpenDate: new Date(),
-      regCloseDate: new Date(futureDate2.getTime() - 24 * 60 * 60 * 1000),
-      maxRegistrations: 500,
-      isTeamEvent: false,
-      volunteerPasswordHash: summitVolPass,
-      primaryColor: '#1e40af', // Blue
-      secondaryColor: '#0f172a',
-      signatureNamesJson: JSON.stringify(['Dame Clara Hughes, President', 'Arthur Vance, Program Chair']),
-      organizerId: adminA.id,
-    },
-  });
-
-  const regSummit1 = await prisma.registration.create({
-    data: {
-      registrationCode: 'REG-2026-TLS101',
-      eventId: event2.id,
-      fullName: 'Emily Zhang',
-      participantIdCode: 'TL-EXEC-801',
-      email: 'emily.zhang@techcorp.com',
-      organization: 'TechCorp Global',
-      phone: '+44 7700 900123',
-      passStatus: 'ACTIVE',
-      qrToken: secureToken(),
-      isCaptain: false,
-      volunteerOptIn: false,
-    },
-  });
-
-  // A revoked pass for testing revocation logic
-  await prisma.registration.create({
-    data: {
-      registrationCode: 'REG-2026-TLS103',
-      eventId: event2.id,
-      fullName: 'Aisha Khan (Revoked Pass Demo)',
-      participantIdCode: 'TL-EXEC-803',
-      email: 'aisha.khan.demo@enterprise.io',
-      organization: 'Global Ventures',
-      passStatus: 'REVOKED',
-      qrToken: 'demo-revoked-token-aisha-12345',
-      isCaptain: false,
-      volunteerOptIn: false,
-    },
-  });
-
-  // 5. Event 3 (Owned by Admin A): Quantum Computing Masterclass (Completed, has certificates)
-  const pastDate = new Date();
-  pastDate.setDate(pastDate.getDate() - 20);
-
-  const event3 = await prisma.event.create({
-    data: {
-      slug: 'quantum-computing-security-masterclass',
-      title: 'Quantum Computing & Post-Quantum Cryptography Masterclass',
-      description: 'An advanced technical masterclass covering lattice-based cryptography, Shor algorithm mitigation, and quantum key distribution architectures.',
-      category: 'Seminars',
-      type: 'ONLINE',
-      status: 'COMPLETED',
-      eventDate: pastDate,
-      startTime: '02:00 PM',
-      endTime: '07:00 PM',
-      durationHours: 5,
-      timezone: 'UTC',
-      locationOrLink: 'Zoom Webinar ID: 883-9921-4402',
-      organizationName: 'Institute for Advanced Quantum Research',
-      logoUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=200&auto=format&fit=crop&q=80',
-      bannerUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?w=1200&auto=format&fit=crop&q=80',
-      contactName: 'Prof. Nikolai Petrov',
-      contactEmail: 'masterclass@iaqr.org',
-      regOpenDate: new Date(pastDate.getTime() - 30 * 24 * 60 * 60 * 1000),
-      regCloseDate: new Date(pastDate.getTime() - 2 * 24 * 60 * 60 * 1000),
-      maxRegistrations: 100,
-      isTeamEvent: false,
-      volunteerPasswordHash: quantumVolPass,
-      primaryColor: '#7c3aed', // Purple
-      secondaryColor: '#2e1065',
-      signatureNamesJson: JSON.stringify(['Prof. Nikolai Petrov, Director', 'Dr. Alistair Finch, Cryptography Lead']),
-      organizerId: adminA.id,
-    },
-  });
-
-  const regQuantum1 = await prisma.registration.create({
-    data: {
-      registrationCode: 'REG-2026-QC001',
-      eventId: event3.id,
-      fullName: 'Dr. Elena Rostova',
-      participantIdCode: 'RES-QUANTUM-01',
-      email: 'elena.rostova@oxford.ac.uk',
-      organization: 'University of Oxford',
-      passStatus: 'ACTIVE',
-      qrToken: secureToken(),
-      isCaptain: false,
-      volunteerOptIn: false,
-      eligibilityStatus: 'APPROVED',
-    },
-  });
-
+  // 8. Exactly ONE Certificate Template & Issued Certificate for Public Verification
   const certTemplate = await prisma.certificateTemplate.create({
     data: {
-      eventId: event3.id,
-      name: 'Technology & Futuristic',
+      eventId: event.id,
+      name: 'Academic Excellence & AI Innovation',
       designType: 'AI_GENERATED',
       templateConfigJson: JSON.stringify({
-        primaryColor: '#7c3aed',
-        accentColor: '#10b981',
-        themeName: 'Technology & Futuristic',
+        primaryColor: '#2563eb',
+        accentColor: '#f59e0b',
+        themeName: 'Academic Excellence & AI Innovation',
       }),
       isApproved: true,
     },
@@ -369,81 +206,48 @@ async function main() {
 
   await prisma.certificate.create({
     data: {
-      certificateCode: 'CERT-2026-000101',
-      eventId: event3.id,
-      registrationId: regQuantum1.id,
-      recipientName: 'Dr. Elena Rostova',
-      organization: 'University of Oxford',
+      certificateCode: 'CERT-2026-AI0101',
+      eventId: event.id,
+      registrationId: registration.id,
+      recipientName: 'Rahul Sharma',
+      organization: 'G. Pulla Reddy Engineering College',
       certificateType: 'WINNER',
-      awardPosition: '1st Place Winner',
+      awardPosition: '1st Place (AI Innovation Sprint)',
+      issueDate: new Date(),
       templateId: certTemplate.id,
       emailStatus: 'SENT',
       emailSentAt: new Date(),
     },
   });
 
-  // 6. Event 4 (Owned by Admin B for Organizer Isolation): Apex Robotics Championship 2026
-  const futureDateB = new Date();
-  futureDateB.setDate(futureDateB.getDate() + 45);
-
-  await prisma.event.create({
+  // 9. Initial Email Log
+  await prisma.emailLog.create({
     data: {
-      slug: 'apex-robotics-championship-2026',
-      title: 'Apex Robotics National Championship 2026',
-      description: 'National autonomous robotics engineering championship and drone navigation challenge.',
-      category: 'Competitions',
-      type: 'PHYSICAL',
-      status: 'REGISTRATION_OPEN',
-      eventDate: futureDateB,
-      startTime: '10:00 AM',
-      endTime: '06:00 PM',
-      timezone: 'America/Chicago',
-      locationOrLink: 'Apex Engineering Arena, Chicago',
-      organizationName: 'Apex Science Institute',
-      contactName: 'Prof. Marcus Thorne',
-      contactEmail: 'organizer.b@university.edu',
-      primaryColor: '#dc2626', // Red
-      secondaryColor: '#450a0a',
-      organizerId: adminB.id,
+      organizerId: organizer.id,
+      senderEmail: 'events@gprec.ac.in',
+      eventId: event.id,
+      registrationId: registration.id,
+      recipientEmail: 'rahul.sharma@student.gprec.ac.in',
+      subject: 'Registration Confirmed: National Collegiate AI & Cloud Hackathon 2026',
+      emailType: 'WELCOME',
+      status: 'SENT',
     },
   });
 
-  // Email Logs for Event 1 & Event 3
-  await prisma.emailLog.createMany({
-    data: [
-      {
-        eventId: event1.id,
-        registrationId: reg1.id,
-        recipientEmail: 'alex.rivera@example.com',
-        subject: 'Registration Confirmed: Global AI & Cloud Hackathon 2026',
-        emailType: 'WELCOME',
-        status: 'SENT',
-      },
-      {
-        eventId: event2.id,
-        registrationId: regSummit1.id,
-        recipientEmail: 'emily.zhang@techcorp.com',
-        subject: 'Registration Confirmed: International Tech Leaders Summit 2026',
-        emailType: 'WELCOME',
-        status: 'SENT',
-      },
-      {
-        eventId: event3.id,
-        registrationId: regQuantum1.id,
-        recipientEmail: 'elena.rostova@oxford.ac.uk',
-        subject: 'Your Certificate for Quantum Computing Masterclass is Ready!',
-        emailType: 'CERTIFICATE',
-        status: 'SENT',
-      },
-    ],
-  });
-
-  console.log('Database seeded successfully.');
+  console.log('\n🌟 SINGLE REALISTIC TEST CASE SEEDED SUCCESSFULLY! 🌟\n');
+  console.log('Event Name:        National Collegiate AI & Cloud Hackathon 2026');
+  console.log('Event Slug:        national-collegiate-ai-hackathon-2026');
+  console.log('Admin Email:       admin@smartevent.com');
+  console.log('Admin Password:    AdminPass123!');
+  console.log('Volunteer ID:      VOL-2026-101');
+  console.log('Volunteer Pass:    volunteer2026');
+  console.log('Sample Pass Code:  REG-2026-AI0101');
+  console.log('Certificate Code:  CERT-2026-AI0101');
 }
 
 main()
   .catch(e => {
-    console.error(e);
+    console.error('Seeding error:', e);
     process.exit(1);
   })
   .finally(async () => {

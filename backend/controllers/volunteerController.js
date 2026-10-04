@@ -15,11 +15,12 @@ export async function volunteerLogin(req, res) {
       return res.status(400).json({ error: 'Event, Volunteer Identifier, and Event Password are required' });
     }
 
-    // Find event
+    // Find event by ID (if valid ObjectId) or by Slug
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(eventSlugOrId);
     const event = await prisma.event.findFirst({
-      where: {
-        OR: [{ id: eventSlugOrId }, { slug: eventSlugOrId }],
-      },
+      where: isObjectId
+        ? { OR: [{ id: eventSlugOrId }, { slug: eventSlugOrId }] }
+        : { slug: eventSlugOrId },
     });
 
     if (!event) {
